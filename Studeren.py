@@ -120,6 +120,14 @@ li[role="option"]:hover {
 
 st.title("📚 Studeren met AI")
 
+user_key = st.text_input("Voer je eigen Gemini API key in:", type="password")
+
+if user_key:
+    client = genai.Client(api_key=user_key)
+    st.success("✅ API key geladen!")
+else:
+    st.warning("🔑 Voeg je Gemini API key toe om de AI te gebruiken.")
+
 data = load_data()
 
 # -----------------------------------------------------------
@@ -621,4 +629,5 @@ Geef terug:
                 if f"fb_{sub}" in st.session_state:
                     st.markdown("**🧾 Feedback:**")
                     st.markdown(st.session_state[f"fb_{sub}"])
+
 
