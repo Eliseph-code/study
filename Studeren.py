@@ -22,7 +22,6 @@ UPLOAD_ROOT.mkdir(exist_ok=True)
 
 
 def get_onderwerp_folder(vak: str, hoofdstuk: str, onderwerp: str) -> Path:
-    """Map voor bestanden per onderwerp, bijv: uploads/Natuurkunde_H4_Mechanica_1_mechanica"""
     safe_v = vak.replace(" ", "_")
     safe_h = hoofdstuk.replace(" ", "_")
     safe_o = onderwerp.replace(" ", "_")
@@ -32,7 +31,6 @@ def get_onderwerp_folder(vak: str, hoofdstuk: str, onderwerp: str) -> Path:
 
 
 def delete_onderwerp_files(vak: str, hoofdstuk: str, onderwerp: str):
-    """Verwijder alle bestanden van één onderwerp (hele map)."""
     folder = get_onderwerp_folder(vak, hoofdstuk, onderwerp)
     if folder.exists():
         shutil.rmtree(folder, ignore_errors=True)
@@ -47,6 +45,7 @@ def load_data():
             pass
     return {}
 
+
 def save_data(data):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -54,74 +53,22 @@ def save_data(data):
 
 st.set_page_config(page_title="Studeren met AI", layout="wide")
 
-# Forceer wit thema en stijl dropdowns
+# ---------- Thema ----------
 st.markdown("""
 <style>
-/* ===== Algemene wit thema ===== */
-html, body, .stApp {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-}
-
-/* ===== Dropdown container ===== */
-div[data-baseweb="select"] > div {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-    border: 1px solid #ccc !important;
-    border-radius: 6px !important;
-}
-
-/* ===== Geselecteerde tekst ===== */
-div[data-baseweb="select"] input {
-    color: #000000 !important;
-    background-color: transparent !important;
-}
-
-/* ===== Opengeklapte dropdown lijst ===== */
-div[role="listbox"],
-ul[role="listbox"],
-.stSelectbox [role="listbox"],
-[data-baseweb="popover"] {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-    border: 1px solid #ccc !important;
-    border-radius: 6px !important;
-}
-
-/* ===== Dropdown opties ===== */
-div[role="option"], li[role="option"] {
-    background-color: #ffffff !important;
-    color: #000000 !important;
-}
-
-/* Hover over een optie */
-div[role="option"]:hover,
-li[role="option"]:hover {
-    background-color: #e6f0ff !important;
-    color: #000000 !important;
-}
-
-/* ===== Knoppen consistent ===== */
+html, body, .stApp {background-color:#fff!important;color:#000!important;}
 .stButton>button {
-    background-color: white !important;
-    color: #2d6cdf !important;
-    border: 2px solid #2d6cdf !important;
-    border-radius: 6px;
-    padding: 0.4em 0.8em;
+  background:white!important;color:#2d6cdf!important;
+  border:2px solid #2d6cdf!important;border-radius:6px;padding:0.4em 0.8em;
 }
-.stButton>button:hover {
-    background-color: #2d6cdf !important;
-    color: white !important;
-}
+.stButton>button:hover {background:#2d6cdf!important;color:white!important;}
 </style>
 """, unsafe_allow_html=True)
 
-
-
 st.title("📚 Studeren met AI")
 
+# ---------- API Key ----------
 user_key = st.text_input("Voer je eigen Gemini API key in:", type="password")
-
 if user_key:
     client = genai.Client(api_key=user_key)
     st.success("✅ API key geladen!")
@@ -131,7 +78,7 @@ else:
 data = load_data()
 
 # -----------------------------------------------------------
-# 🧠 Bovenbalk met dropdowns en iconen
+# 🧠 Vakken / Hoofdstukken / Onderwerpen
 # -----------------------------------------------------------
 col_vak, col_hoofdstuk, col_onderwerp = st.columns(3)
 
@@ -167,34 +114,13 @@ with col_vak:
 
     if st.session_state.get("edit_vak") and selected_vak:
         new_name = st.text_input("Nieuwe naam voor vak:", value=selected_vak)
-
-        col_ev1, col_ev2, col_ev3 = st.columns([2, 1, 1])
-        with col_ev1:
-            if st.button("Opslaan wijziging vak"):
-                if new_name.strip() and new_name != selected_vak:
-                    data[new_name] = data.pop(selected_vak)
-                    save_data(data)
-                    st.success("Vaknaam gewijzigd.")
-                    st.session_state.pop("edit_vak")
-                    st.rerun()
-        with col_ev2:
-            if st.button("🗑️ Verwijder vak", key="delete_vak"):
-                # Alle uploads van dit vak opruimen
-                hoofdstukken = data[selected_vak]["hoofdstukken"]
-                for hnaam, hdata in hoofdstukken.items():
-                    for ond in hdata.get("onderwerpen", []):
-                        delete_onderwerp_files(selected_vak, hnaam, ond["naam"])
-                # Vak uit data verwijderen
-                data.pop(selected_vak, None)
+        if st.button("Opslaan wijziging vak"):
+            if new_name.strip() and new_name != selected_vak:
+                data[new_name] = data.pop(selected_vak)
                 save_data(data)
-                st.success("Vak verwijderd.")
+                st.success("Vaknaam gewijzigd.")
                 st.session_state.pop("edit_vak")
                 st.rerun()
-        with col_ev3:
-            if st.button("Annuleer wijziging vak", key="cancel_edit_vak"):
-                st.session_state.pop("edit_vak")
-                st.rerun()
-
 
 # ===== HOOFDSTUK =====
 with col_hoofdstuk:
@@ -203,15 +129,8 @@ with col_hoofdstuk:
     if selected_vak:
         hoofdstukken = data[selected_vak]["hoofdstukken"]
         selected_hoofdstuk = st.selectbox("Kies hoofdstuk", list(hoofdstukken.keys())) if hoofdstukken else None
-
-        col3, col4 = st.columns([1, 1])
-        with col3:
-            if st.button("➕", key="add_hoofdstuk_btn"):
-                st.session_state["add_hoofdstuk"] = True
-        with col4:
-            if selected_hoofdstuk and st.button("✏️", key="edit_hoofdstuk_btn"):
-                st.session_state["edit_hoofdstuk"] = True
-
+        if st.button("➕", key="add_hoofdstuk_btn"):
+            st.session_state["add_hoofdstuk"] = True
         if st.session_state.get("add_hoofdstuk"):
             new_chapter = st.text_input("Naam nieuw hoofdstuk:")
             if st.button("Opslaan hoofdstuk"):
@@ -225,39 +144,6 @@ with col_hoofdstuk:
                     st.success("Hoofdstuk toegevoegd.")
                     st.session_state.pop("add_hoofdstuk")
                     st.rerun()
-            if st.button("Annuleer hoofdstuk", key="cancel_add_chapter"):
-                st.session_state.pop("add_hoofdstuk")
-                st.rerun()
-
-        if st.session_state.get("edit_hoofdstuk") and selected_hoofdstuk:
-            new_name = st.text_input("Nieuwe naam hoofdstuk:", value=selected_hoofdstuk)
-
-            col_eh1, col_eh2, col_eh3 = st.columns([2, 1, 1])
-            with col_eh1:
-                if st.button("Opslaan wijziging hoofdstuk"):
-                    if new_name.strip() and new_name != selected_hoofdstuk:
-                        hoofdstukken[new_name] = hoofdstukken.pop(selected_hoofdstuk)
-                        save_data(data)
-                        st.success("Hoofdstuknaam gewijzigd.")
-                        st.session_state.pop("edit_hoofdstuk")
-                        st.rerun()
-            with col_eh2:
-                if st.button("🗑️ Verwijder hoofdstuk", key="delete_hoofdstuk"):
-                    # Alle onderwerpen + bestanden opruimen
-                    hoofdstuk_data = hoofdstukken.get(selected_hoofdstuk, {})
-                    for ond in hoofdstuk_data.get("onderwerpen", []):
-                        delete_onderwerp_files(selected_vak, selected_hoofdstuk, ond["naam"])
-
-                    hoofdstukken.pop(selected_hoofdstuk, None)
-                    save_data(data)
-                    st.success("Hoofdstuk verwijderd.")
-                    st.session_state.pop("edit_hoofdstuk")
-                    st.rerun()
-            with col_eh3:
-                if st.button("Annuleer wijziging hoofdstuk", key="cancel_edit_chapter"):
-                    st.session_state.pop("edit_hoofdstuk")
-                    st.rerun()
-
 
 # ===== ONDERWERP =====
 with col_onderwerp:
@@ -268,13 +154,8 @@ with col_onderwerp:
         if onderwerpen:
             selected_onderwerp = st.selectbox("Kies onderwerp", [t["naam"] for t in onderwerpen])
 
-        col5, col6 = st.columns([1, 1])
-        with col5:
-            if st.button("➕", key="add_onderwerp_btn"):
-                st.session_state["add_onderwerp"] = True
-        with col6:
-            if selected_onderwerp and st.button("✏️", key="edit_onderwerp_btn"):
-                st.session_state["edit_onderwerp"] = True
+        if st.button("➕", key="add_onderwerp_btn"):
+            st.session_state["add_onderwerp"] = True
 
         if st.session_state.get("add_onderwerp"):
             new_topic = st.text_input("Naam nieuw onderwerp:")
@@ -302,14 +183,18 @@ with col_onderwerp:
                         folder = get_onderwerp_folder(selected_vak, selected_hoofdstuk, new_topic.strip())
                         for uf in upload_files:
                             dest = folder / uf.name
-                            with open(dest, "wb") as f:
-                                f.write(uf.getbuffer())
+                            # ✅ voorkom dubbel schrijven
+                            if not dest.exists():
+                                with open(dest, "wb") as f:
+                                    f.write(uf.getbuffer())
                             mime, _ = mimetypes.guess_type(dest.name)
-                            files_meta.append({
-                                "path": str(dest),
-                                "name": uf.name,
-                                "mime_type": mime or "application/octet-stream",
-                            })
+                            # ✅ voorkom dubbele metadata
+                            if not any(f["name"] == uf.name for f in files_meta):
+                                files_meta.append({
+                                    "path": str(dest),
+                                    "name": uf.name,
+                                    "mime_type": mime or "application/octet-stream",
+                                })
 
                     onderwerpen.append({
                         "id": new_id,
@@ -323,28 +208,17 @@ with col_onderwerp:
                     st.session_state.pop("add_onderwerp")
                     st.rerun()
 
-            if st.button("Annuleer onderwerp", key="cancel_topic"):
-                st.session_state.pop("add_onderwerp")
-                st.rerun()
-
-
+        # ===== BEWERK ONDERWERP =====
         if st.session_state.get("edit_onderwerp") and selected_onderwerp:
             onderwerp = next((t for t in onderwerpen if t["naam"] == selected_onderwerp), None)
             if onderwerp:
-                # Zorg dat er altijd een files-lijst is
-                if "files" not in onderwerp or not isinstance(onderwerp["files"], list):
+                if "files" not in onderwerp:
                     onderwerp["files"] = []
-
                 new_name = st.text_input("Nieuwe naam onderwerp:", value=onderwerp["naam"])
-                new_bron = st.text_area(
-                    "Bewerk bronboektekst:",
-                    value=onderwerp.get("bron_text", ""),
-                    height=200
-                )
+                new_bron = st.text_area("Bewerk bronboektekst:", value=onderwerp.get("bron_text", ""), height=200)
 
                 st.markdown("### 📎 Bestanden bij dit onderwerp")
 
-                # Bestaande bestanden tonen + verwijderen
                 files = onderwerp.get("files", [])
                 if files:
                     for idx, fmeta in enumerate(files):
@@ -352,39 +226,27 @@ with col_onderwerp:
                         with colf1:
                             mime = fmeta.get("mime_type", "")
                             path = fmeta.get("path", "")
-                            name = fmeta.get("name", "bestand")
-
+                            name = fmeta.get("name", "")
                             if mime.startswith("image/") and os.path.exists(path):
                                 st.image(path, caption=name, use_container_width=True)
-                            else:
-                                if os.path.exists(path):
-                                    with open(path, "rb") as fh:
-                                        st.download_button(
-                                            f"📄 {name}",
-                                            fh,
-                                            file_name=name,
-                                            key=f"dl_file_{onderwerp['id']}_{idx}"
-                                        )
-                                else:
-                                    st.write(f"📄 {name} (bestand niet meer gevonden)")
-
+                            elif os.path.exists(path):
+                                with open(path, "rb") as fh:
+                                    st.download_button(f"📄 {name}", fh, file_name=name, key=f"dl_{idx}")
                         with colf2:
-                            if st.button("🗑️", key=f"del_file_{onderwerp['id']}_{idx}"):
-                                # fysiek bestand verwijderen
+                            if st.button("🗑️", key=f"del_{idx}"):
                                 try:
                                     if os.path.exists(path):
                                         os.remove(path)
                                 except Exception:
                                     pass
-                                # uit lijst halen
                                 onderwerp["files"].pop(idx)
                                 save_data(data)
                                 st.success("Bestand verwijderd.")
                                 st.rerun()
                 else:
-                    st.info("Nog geen bestanden gekoppeld aan dit onderwerp.")
+                    st.info("Nog geen bestanden gekoppeld.")
 
-                # Nieuwe bestanden toevoegen
+                # ➕ Nieuwe bestanden
                 new_uploads = st.file_uploader(
                     "➕ Nieuwe bestanden toevoegen",
                     type=["png", "jpg", "jpeg", "pdf"],
@@ -394,44 +256,23 @@ with col_onderwerp:
 
                 if new_uploads:
                     folder = get_onderwerp_folder(selected_vak, selected_hoofdstuk, new_name.strip())
+                    existing_names = {f["name"] for f in onderwerp.get("files", [])}
                     for uf in new_uploads:
                         dest = folder / uf.name
-                        with open(dest, "wb") as f:
-                            f.write(uf.getbuffer())
+                        if not dest.exists():
+                            with open(dest, "wb") as f:
+                                f.write(uf.getbuffer())
                         mime, _ = mimetypes.guess_type(dest.name)
-                        onderwerp["files"].append({
-                            "path": str(dest),
-                            "name": uf.name,
-                            "mime_type": mime or "application/octet-stream",
-                        })
+                        if uf.name not in existing_names:
+                            onderwerp["files"].append({
+                                "path": str(dest),
+                                "name": uf.name,
+                                "mime_type": mime or "application/octet-stream",
+                            })
+                            existing_names.add(uf.name)
                     save_data(data)
                     st.success("Nieuwe bestanden toegevoegd.")
                     st.rerun()
-
-                # Knoppen: opslaan, verwijderen, annuleren
-                col_o1, col_o2, col_o3 = st.columns([2, 1, 1])
-                with col_o1:
-                    if st.button("Opslaan wijziging onderwerp"):
-                        onderwerp["naam"] = new_name.strip()
-                        onderwerp["bron_text"] = new_bron.strip()
-                        save_data(data)
-                        st.success("Onderwerp bijgewerkt.")
-                        st.session_state.pop("edit_onderwerp")
-                        st.rerun()
-                with col_o2:
-                    if st.button("🗑️ Verwijder onderwerp", key="delete_onderwerp"):
-                        # Bestanden verwijderen
-                        delete_onderwerp_files(selected_vak, selected_hoofdstuk, onderwerp["naam"])
-                        # Onderwerp uit lijst halen
-                        onderwerpen[:] = [t for t in onderwerpen if t["id"] != onderwerp["id"]]
-                        save_data(data)
-                        st.success("Onderwerp verwijderd.")
-                        st.session_state.pop("edit_onderwerp")
-                        st.rerun()
-                with col_o3:
-                    if st.button("Annuleer wijziging onderwerp", key="cancel_edit_topic"):
-                        st.session_state.pop("edit_onderwerp")
-                        st.rerun()
 
 
 
@@ -628,3 +469,4 @@ Geef terug:
                 if f"fb_{sub}" in st.session_state:
                     st.markdown("**🧾 Feedback:**")
                     st.markdown(st.session_state[f"fb_{sub}"])
+
