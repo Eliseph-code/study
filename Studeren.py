@@ -297,27 +297,19 @@ with col_onderwerp:
                 else:
                     new_id = max((t["id"] for t in onderwerpen), default=0) + 1
 
-                        files_meta = []
-                            if upload_files:
-                                folder = get_onderwerp_folder(selected_vak, selected_hoofdstuk, new_topic.strip())
-                                for uf in upload_files:
-                                    dest = folder / uf.name
-                        
-                                    # voorkom dubbel schrijven op schijf
-                                    if not dest.exists():
-                                        with open(dest, "wb") as f:
-                                            f.write(uf.getbuffer())
-                        
-                                    mime, _ = mimetypes.guess_type(dest.name)
-                        
-                                    # voorkom dubbele entries in files_meta
-                                    if not any(f["name"] == uf.name for f in files_meta):
-                                        files_meta.append({
-                                            "path": str(dest),
-                                            "name": uf.name,
-                                            "mime_type": mime or "application/octet-stream",
-                                        })
-                        
+                    files_meta = []
+                    if upload_files:
+                        folder = get_onderwerp_folder(selected_vak, selected_hoofdstuk, new_topic.strip())
+                        for uf in upload_files:
+                            dest = folder / uf.name
+                            with open(dest, "wb") as f:
+                                f.write(uf.getbuffer())
+                            mime, _ = mimetypes.guess_type(dest.name)
+                            files_meta.append({
+                                "path": str(dest),
+                                "name": uf.name,
+                                "mime_type": mime or "application/octet-stream",
+                            })
 
                     onderwerpen.append({
                         "id": new_id,
@@ -636,4 +628,3 @@ Geef terug:
                 if f"fb_{sub}" in st.session_state:
                     st.markdown("**🧾 Feedback:**")
                     st.markdown(st.session_state[f"fb_{sub}"])
-
